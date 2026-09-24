@@ -13,8 +13,83 @@ import type {
   Question,
   Requirement,
 } from "../../../../packages/shared/src/types.js";
+import { z } from "zod";
 
-// 1. Initialize a global promise chain to act as an in-memory queue
+// STRICT APPENDIX A SCHEMA VALIDATION ---
+const KitSchemaValidator = z.object({
+  source: z.object({
+    company: z.string(),
+    company_url: z.string(),
+    role: z.string(),
+    location: z.string(),
+    jd_chars: z.number(),
+    researched_at: z.string(),
+    pages_used: z.array(z.string()),
+  }),
+  company_brief: z.object({
+    summary: z.string(),
+    what_they_do: z.string(),
+    sources: z.array(z.string()),
+  }),
+  role: z.object({
+    title: z.string(),
+    seniority: z.string(),
+    responsibilities: z.array(z.string()),
+    requirements: z.array(
+      z.object({
+        id: z.string(),
+        text: z.string(),
+        kind: z.enum(["technical", "behavioural", "domain"]),
+        priority: z.enum(["must", "nice"]),
+        origin: z.string().optional(),
+        is_edited: z.boolean().optional(),
+        is_pinned: z.boolean().optional(),
+      })
+    ),
+  }),
+  questions: z.array(
+    z.object({
+      id: z.string(),
+      requirement_ids: z.array(z.string()),
+      category: z.enum(["technical", "behavioural", "system-design", "company-fit"]),
+      prompt: z.string(),
+      answer_outline: z.string(),
+      difficulty: z.number().int().min(1).max(3),
+      origin: z.string().optional(),
+      is_edited: z.boolean().optional(),
+      is_pinned: z.boolean().optional(),
+    })
+  ),
+  flashcards: z.array(
+    z.object({
+      id: z.string(),
+      front: z.string(),
+      back: z.string(),
+      requirement_ids: z.array(z.string()),
+      origin: z.string().optional(),
+      is_edited: z.boolean().optional(),
+      is_pinned: z.boolean().optional(),
+    })
+  ),
+  schedule: z.object({
+    days_available: z.number(),
+    days: z.array(
+      z.object({
+        day: z.number(),
+        focus: z.string(),
+        question_ids: z.array(z.string()),
+        minutes: z.number().int(),
+      })
+    ),
+  }),
+  coverage: z.object({
+    uncovered_requirement_ids: z.array(z.string()),
+    passes: z.number(),
+  }),
+});
+
+
+// IN-MEMORY QUEUE
 let generationQueue = Promise.resolve();
 
 export const startGeneration = async (req: AuthRequest, res: Response) => {
@@ -28,17 +103,32 @@ export const startGeneration = async (req: AuthRequest, res: Response) => {
   }
 
   try {
-    // Create the DB record
+    //  DOUBLE-TRIGGER PREVENTION ---
+    const recentDuplicate = await KitModel.findOne({
+      user_id: userId,
+      "source.company_url": company_url,
+      "source.jd_chars": jd.length,
+      status: "generating",
+      created_at: { $gt: new Date(Date.now() - 3 * 60 * 1000) }, 
+    });
+
+    if (recentDuplicate) {
+      return res.status(409).json({ 
+        error: "Generation already in progress for this job description.",
+        id: recentDuplicate._id 
+      });
+    }
+
+    // IMMEDIATE RESPONSE (Solves the "Takes 90 seconds" timeout problem)
     const newKit = await KitModel.create({
       user_id: userId,
       status: "generating",
       source: { company_url, jd_chars: jd.length },
     });
 
-    // Instantly respond to the frontend so it can render the "Generating" cards
     res.status(202).json({ id: newKit._id, status: "generating" });
 
-    // 2. Attach the generation task to the queue instead of running it immediately
+    // ASYNC PROCESSING (Solves the "Fails halfway" problem)
     generationQueue = generationQueue
       .then(async () => {
         try {
@@ -47,21 +137,25 @@ export const startGeneration = async (req: AuthRequest, res: Response) => {
             companyUrl: company_url,
             days,
           });
+
+          // STRICT VALIDATION BEFORE SAVING
+          // Throws an error immediately if the LLM hallucinated the structure
+          const validatedData = KitSchemaValidator.parse(generatedData);
+
           await KitModel.findByIdAndUpdate(newKit._id, {
-            ...generatedData,
+            ...validatedData,
             status: "ready",
           });
-        } catch (error: unknown) {
-          console.error(`[API] Kit ${newKit._id} generation failed:`, error);
+        } catch (error: any) {
+          console.error(`[API] Kit ${newKit._id} failed validation or generation:`, error.message);
+          // Graceful midway failure handling
           await KitModel.findByIdAndUpdate(newKit._id, { status: "failed" });
         }
       })
       .catch(() => {
-        // Safe-catch to ensure one catastrophic failure doesn't break the entire queue chain
-        console.error(
-          `[API] Queue recovered from catastrophic failure on Kit ${newKit._id}`,
-        );
+        console.error(`[API] Queue recovered from fatal failure on Kit ${newKit._id}`);
       });
+
   } catch (error: unknown) {
     res.status(500).json({ error: "Failed to initialize generation" });
   }

@@ -1,11 +1,19 @@
 import * as cheerio from "cheerio";
 import dns from "dns/promises";
+import robotsParser from "robots-parser";
 
 export interface CrawlResult {
   pages_used: string[];
   scraped_text: string;
   errors: string[];
 }
+
+const CRAWL_DELAY_MS = 600;
+const MAX_RETRIES = 2;
+const BASE_BACKOFF_MS = 1000;
+
+// Helper: Polite sleep
+const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
 // Security Layer (SSRF Protection)
 async function isSafeUrl(
@@ -15,6 +23,7 @@ async function isSafeUrl(
   try {
     const parsed = new URL(targetUrl);
     if (!["http:", "https:"].includes(parsed.protocol)) return false;
+    // Allow local mock servers in Section 9 batch evaluation
     if (env === "batch") return true;
 
     const addresses = await dns.resolve(parsed.hostname);
@@ -32,86 +41,174 @@ async function isSafeUrl(
   }
 }
 
-// Network Layer
-async function fetchSafe(
+// robots.txt Compliance Layer
+async function isAllowedByRobots(
   url: string,
   env: "production" | "batch",
-): Promise<string | null> {
-  if (!(await isSafeUrl(url, env)))
-    throw new Error(`URL failed security check: ${url}`);
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
+): Promise<boolean> {
+  if (env === "batch") return true;
 
   try {
-    const response = await fetch(url, {
+    const parsed = new URL(url);
+    const robotsUrl = `${parsed.protocol}//${parsed.host}/robots.txt`;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+
+    const res = await fetch(robotsUrl, {
       signal: controller.signal,
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      },
-    });
+      headers: { "User-Agent": "AI-Prep-Kit-Crawler/1.0" },
+    }).finally(() => clearTimeout(timeout));
 
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    if (!res.ok) return true;
 
-    const contentType = response.headers.get("content-type") || "";
-    if (
-      !contentType.includes("text/html") &&
-      !contentType.includes("text/plain")
-    ) {
-      throw new Error(`Invalid content type: ${contentType}`);
-    }
-
-    const html = await response.text();
-    if (html.length > 3000000) throw new Error("Payload too large");
-
-    return html;
-  } finally {
-    clearTimeout(timeout);
+    const text = await res.text();
+    const robots = (robotsParser as any)(robotsUrl, text);
+    return robots.isAllowed(url, "AI-Prep-Kit-Crawler/1.0") ?? true;
+  } catch {
+    return true;
   }
 }
 
-// Text Extraction
+// Resilient Network Layer with Exponential Backoff
+async function fetchSafeWithBackoff(
+  url: string,
+  env: "production" | "batch",
+): Promise<string | null> {
+  if (!(await isSafeUrl(url, env))) {
+    throw new Error(`URL failed security check (SSRF protection): ${url}`);
+  }
+
+  const allowed = await isAllowedByRobots(url, env);
+  if (!allowed) {
+    throw new Error(`Crawling disallowed by robots.txt: ${url}`);
+  }
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 7000);
+
+    try {
+      const response = await fetch(url, {
+        signal: controller.signal,
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+          Accept: "text/html,application/xhtml+xml,text/plain",
+        },
+      });
+
+      // Handle rate limits or temporary server errors with backoff
+      if (response.status === 429 || response.status >= 500) {
+        if (attempt < MAX_RETRIES) {
+          const delay = BASE_BACKOFF_MS * Math.pow(2, attempt);
+          await sleep(delay);
+          continue;
+        }
+        throw new Error(
+          `HTTP ${response.status} (Rate limited / Server error)`,
+        );
+      }
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const contentType = response.headers.get("content-type") || "";
+      if (
+        !contentType.includes("text/html") &&
+        !contentType.includes("text/plain")
+      ) {
+        throw new Error(`Invalid content type: ${contentType}`);
+      }
+
+      const html = await response.text();
+      if (html.length > 3_000_000) throw new Error("Payload exceeds 3MB limit");
+
+      return html;
+    } catch (err: any) {
+      if (attempt === MAX_RETRIES) throw err;
+      await sleep(BASE_BACKOFF_MS * Math.pow(2, attempt));
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  return null;
+}
+
+//  HTML Text Extraction
 function extractCleanText(html: string): string {
   const $ = cheerio.load(html);
-  $("script, style, nav, footer, header, aside, svg, img, form").remove();
+  $(
+    "script, style, nav, footer, header, aside, svg, img, form, noscript, iframe",
+  ).remove();
   return $("body").text().replace(/\s+/g, " ").trim();
 }
 
-// Heuristic Link Scoring
+// Heuristic Link Scoring (Accounts for Handbooks, Tech Blogs, & ATS)
 function getTopCandidateLinks(html: string, baseUrl: string): string[] {
   const $ = cheerio.load(html);
   const candidates = new Map<string, { url: string; score: number }>();
 
   $("a").each((_, el) => {
     const href = $(el).attr("href");
-    const text = $(el).text().toLowerCase().trim();
+    const linkText = $(el).text().toLowerCase().trim();
     if (!href) return;
 
     try {
       const resolvedUrl = new URL(href, baseUrl).href;
+
+      // Exclude authentication, billing, and legal boilerplate
       if (
-        resolvedUrl.match(/\/(login|signup|cart|legal|terms|privacy|password)/i)
-      )
+        resolvedUrl.match(
+          /\/(login|signup|cart|legal|terms|privacy|cookie|auth|password|billing)/i,
+        )
+      ) {
         return;
+      }
 
       let score = 0;
-      if (resolvedUrl.match(/\/(careers|jobs|vacancies|hiring)/i)) score += 50;
-      if (resolvedUrl.match(/\/(company|about|handbook|team)/i)) score += 30;
-      if (resolvedUrl.match(/\/blog\/.*(engineering|tech)/i)) score += 20;
+
+      // Primary targets: Careers, Hiring, Handbooks, Interview process
+      if (
+        resolvedUrl.match(
+          /\/(careers|jobs|vacancies|hiring|how-we-hire|interview-process)/i,
+        )
+      )
+        score += 60;
+      if (resolvedUrl.match(/\/(handbook|culture|about|company|values|team)/i))
+        score += 35;
+      if (
+        resolvedUrl.match(
+          /\/blog\/.*(engineering|tech|interview|architecture)/i,
+        )
+      )
+        score += 25;
       if (
         resolvedUrl.match(
           /(greenhouse\.io|lever\.co|ashbyhq\.com|workable\.com)/i,
         )
       )
+        score += 70;
+
+      // Anchor text cues
+      if (
+        linkText.match(
+          /(how we hire|interview process|hiring process|our interview)/i,
+        )
+      )
         score += 60;
       if (
-        text.includes("join") ||
-        text.includes("careers") ||
-        text.includes("hiring")
+        linkText.match(
+          /(join us|careers|open positions|view jobs|work with us)/i,
+        )
       )
         score += 40;
-      if (text.includes("about us") || text.includes("our team")) score += 20;
+      if (
+        linkText.match(
+          /(handbook|our values|culture|life at|engineering blog)/i,
+        )
+      )
+        score += 25;
 
       if (score > 0) {
         const existing = candidates.get(resolvedUrl);
@@ -119,9 +216,7 @@ function getTopCandidateLinks(html: string, baseUrl: string): string[] {
           candidates.set(resolvedUrl, { url: resolvedUrl, score });
         }
       }
-    } catch {
-      
-    }
+    } catch {}
   });
 
   return Array.from(candidates.values())
@@ -130,25 +225,23 @@ function getTopCandidateLinks(html: string, baseUrl: string): string[] {
     .map((c) => c.url);
 }
 
-// PUBLIC DISCUSSION SEARCH
+//  Public Discussion Search (DuckDuckGo -> Reddit)
 async function searchPublicDiscussion(
   companyName: string,
   env: "production" | "batch",
 ): Promise<string> {
-  // Skip this in batch mode to ensure the 15-minute time limit for 5 cases is easily met
   if (env === "batch") return "";
 
   const query = `site:reddit.com "${companyName}" interview process`;
   const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
 
   try {
-    const response = await fetchSafe(url, env);
+    const response = await fetchSafeWithBackoff(url, env);
     if (!response) return "No public discussion found.";
 
     const $ = cheerio.load(response);
     let discussions = "";
 
-    // DuckDuckGo HTML snippet class
     $(".result__snippet").each((i, el) => {
       if (i < 3) discussions += `- ${$(el).text().trim()}\n`;
     });
@@ -157,12 +250,11 @@ async function searchPublicDiscussion(
       ? discussions
       : "No relevant public interview discussions found.";
   } catch (err: any) {
-    // Graceful fallback for Section 10 edge case requirements
-    return `Public discussion search failed or was blocked: ${err.message}`;
+    return `Public discussion search skipped: ${err.message}`;
   }
 }
 
-// 6. Main Crawler Orchestrator
+// Crawler Orchestrator
 export async function crawlCompany(
   baseUrl: string,
   env: "production" | "batch" = "production",
@@ -178,43 +270,47 @@ export async function crawlCompany(
     const parsedUrl = new URL(baseUrl);
     companyName =
       parsedUrl.hostname.replace("www.", "").split(".")[0] || "the company";
-  } catch (e) {
-    
+  } catch {
+    /* ignore fallback */
   }
 
   try {
-    // Fetch Homepage
-    const homeHtml = await fetchSafe(baseUrl, env);
+    // Fetch base homepage
+    const homeHtml = await fetchSafeWithBackoff(baseUrl, env);
     if (!homeHtml) throw new Error("Empty response from homepage");
 
     result.pages_used.push(baseUrl);
     result.scraped_text +=
       `\n--- SOURCE: ${baseUrl} ---\n` + extractCleanText(homeHtml);
 
-    // Discover & Fetch Links
+    // Discover and fetch top candidate links
     const candidateLinks = getTopCandidateLinks(homeHtml, baseUrl);
     for (const link of candidateLinks) {
       if (result.pages_used.includes(link)) continue;
+
+      // Respect rate limits with a small pause between secondary pages
+      await sleep(CRAWL_DELAY_MS);
+
       try {
-        const linkHtml = await fetchSafe(link, env);
+        const linkHtml = await fetchSafeWithBackoff(link, env);
         if (linkHtml) {
           result.pages_used.push(link);
           result.scraped_text +=
             `\n--- SOURCE: ${link} ---\n` + extractCleanText(linkHtml);
         }
       } catch (err: any) {
-        result.errors.push(`Failed to fetch ${link}: ${err.message}`);
+        result.errors.push(`Skipped link ${link}: ${err.message}`);
       }
     }
 
-    // Search Public Discussion
+    // Search public discussion
     const discussions = await searchPublicDiscussion(companyName, env);
     result.scraped_text += `\n--- PUBLIC DISCUSSION (${companyName}) ---\n${discussions}`;
   } catch (err: any) {
-    result.errors.push(`Failed to fetch base company URL: ${err.message}`);
+    result.errors.push(`Base crawl skipped: ${err.message}`);
   }
 
-  // Truncate to avoid blowing up LLM context window (~20k chars)
+  // Cap scraped context (~20k chars) to preserve LLM token limits
   result.scraped_text = result.scraped_text.slice(0, 20000);
 
   return result;
