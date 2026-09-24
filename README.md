@@ -8,8 +8,8 @@ This project was built adhering strictly to the assessment brief, emphasizing a 
 
 **Stack:**
 
-- **Frontend:** Next.js (React), Tailwind CSS v4, Framer Motion, Lucide React (Deployed on Vercel)
-- **Backend:** Node.js, Express, Mongoose (Deployed on Render using `tsx`)
+- **Frontend:** Next.js (React), Tailwind CSS v4, Framer Motion, Lucide React
+- **Backend:** Node.js, Express, Mongoose
 - **Database:** MongoDB Atlas
 - **LLM Provider:** Groq (Model: `llama3-8b-8192`)
 - **Scraping / Crawling:** Custom heuristic crawler using `cheerio` and `robots-parser`
@@ -20,10 +20,18 @@ Groq was chosen for the LLM provider because its free tier offers incredible spe
 
 ---
 
-## ⚙️ Setup & Local Development
+## ⚙️ Setup Instructions
 
-### 1. Environment Variables
+### Deployed Environment
 
+The application is deployed and ready to use. No setup is required for the live version:
+
+- **Frontend (Live URL):** [Insert Vercel URL Here]
+- **Backend API Base:** [Insert Render URL Here]
+
+### Local Development Setup
+
+**1. Environment Variables**
 Create a `.env` file in the root directory:
 
 ```env
@@ -33,31 +41,21 @@ MONGODB_URI=mongodb://127.0.0.1:27017/ai-interview-kit
 JWT_SECRET=your_jwt_secret_here
 ```
 
-### 2. Installation
+**2. Installation**
 
 ```bash
 npm install
 cd apps/web && npm install
 ```
 
-### 3. Running the Tests
-
-Automated tests protect the deterministic schedule allocation and the strict JSON structure mapping:
-
-```bash
-npm run test
-```
-
-### 4. Running the Batch CLI (Section 9)
-
+**3. Running the Batch Entry Point (Section 9)**
 To run the automated pipeline against a local JSON file of test cases without booting the web servers:
 
 ```bash
 npm run evaluate -- --input test-input.json --output test-output.json
 ```
 
-### 5. Running the Web App
-
+**4. Running the Web App**
 You will need two terminals:
 
 ```bash
@@ -82,8 +80,10 @@ The system is strictly divided into three layers to protect the generation pipel
 
 ## 🔍 Retrieval & Sequencing
 
-**Retrieval Approach:**
-Instead of hardcoding `/careers`, the crawler fetches the homepage, extracts all `<a>` tags, and scores them using a heuristic dictionary (e.g., boosting URLs containing `lever.co`, `greenhouse.io`, or paths like `/handbook`). It fetches the top 3 scored links. To find public discussion, it queries the DuckDuckGo HTML interface restricted to `site:reddit.com`, extracting snippets to avoid heavy API costs.
+**Retrieval Approach & Sources Used:**
+The crawler strictly respects `robots.txt`. Instead of hardcoding `/careers`, it fetches the homepage, extracts all `<a>` tags, and scores them using a heuristic dictionary (boosting paths like `/handbook` or platforms like `lever.co`).
+
+- **Sources:** Direct company site crawling (fetching the top 3 heuristic links) and DuckDuckGo HTML search restricted to `site:reddit.com` to find public interview discussions without expensive API costs.
 
 **Generation Sequencing (The Pipeline):**
 The pipeline intentionally refuses to use a single "do everything" prompt.
@@ -126,11 +126,32 @@ Scheduling is mathematical, not predictive. The `allocateSchedule` function:
 
 ---
 
+## ⚖️ Key Design Decisions, Trade-offs & Known Limitations
+
+**Decision 1: In-Memory Promise Queue vs. Redis/BullMQ**
+
+- _Design:_ To prevent API rate limits during Batch JSON uploads, the backend routes requests into a native JavaScript Promise chain queue, serializing LLM requests.
+- _Trade-off & Limitation:_ This avoids heavy infrastructure dependencies (Redis) keeping setup simple, but limits horizontal scalability. If deployed across multiple server instances, the queue isn't shared. Furthermore, if the Node server restarts, the in-memory queue resets.
+
+**Decision 2: Strict UI Accessibility**
+
+- _Design:_ The UI relies on semantic HTML (`<button>`, `<form>`) ensuring complete keyboard navigability. Forms support native `Enter` submission, file uploads use natively focusable hidden inputs, and interactive icons utilize `focus-visible` rings.
+
+**Decision 3: Multi-Step Prompts vs. Single-Shot Generation**
+
+- _Trade-off:_ Breaking generation into 5 discrete LLM calls means the entire pipeline takes ~30-40 seconds to complete. I accepted this slower speed in exchange for vastly superior accuracy, strict schema compliance, and the ability to inject deterministic coverage checks between passes.
+
+**Known Limitations:**
+
+- **DuckDuckGo Parsing:** Scraping the HTML interface of DuckDuckGo for Reddit threads is brittle; if they update their DOM classes, the public discussion search will gracefully fail and return an empty string.
+- **Heuristic Crawling:** While highly effective for standard SaaS sites, extremely unconventional SPA (Single Page Application) sites with no standard anchor tags may result in the crawler failing to find the hiring page.
+
+---
+
 ## 🛡 Edge Cases & Failure Handling
 
-- **In-Memory Batch Queuing:** To prevent API rate limits when a user uploads a Batch JSON of multiple roles, the backend routes them into a native JavaScript Promise chain queue. This serializes LLM requests so Groq processes them sequentially, keeping the system well under the Free Tier TPM (Tokens Per Minute) limit, while the frontend accurately reflects them all as "Generating".
-- **Strict JSON Typing:** LLM prompts explicitly enforce string literals for categories (e.g., `"String (strictly 'technical', 'behavioural', or 'domain')"`). This guarantees 100% structural compliance with the requested schema and prevents LLM hallucination of categories.
-- **Unreachable Company Sites:** Network fetches are wrapped in `try/catch`. If the site times out or blocks bots, the crawler returns an empty string, logs the error, and the LLM generates a kit based _solely_ on the JD, noting in the brief that the company could not be researched. It does not fail the run.
+- **Strict JSON Typing:** LLM prompts explicitly enforce string literals for categories (e.g., `"String (strictly 'technical', 'behavioural', or 'domain')"`).
+- **Unreachable Company Sites:** Network fetches are wrapped in `try/catch`. If the site blocks bots, the crawler returns an empty string, logs the error, and the LLM generates a kit based _solely_ on the JD without failing the run.
 - **SSRF Attacks:** The crawler runs target URLs through `dns.resolve` to actively reject loopback (`127.x.x.x`) and private (`192.168.x.x`) network addresses in production.
 
 ---
