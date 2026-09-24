@@ -1,0 +1,12 @@
+[
+  {
+    "company_url": "https://stripe.com",
+    "days": 10,
+    "jd": "Backend Software Engineer, API Platform. Requirements: 4+ years of Ruby or Go. Experience building high-throughput distributed systems. Knowledge of ACID compliance and database transactions."
+  },
+  {
+    "company_url": "https://linear.app",
+    "days": 3,
+    "jd": "Fullstack Product Engineer. Looking for someone obsessed with UX. Tech stack: React, TypeScript, GraphQL, Node.js. Must have experience building real-time sync engines."
+  }
+]

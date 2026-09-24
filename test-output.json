@@ -1,0 +1,276 @@
+{
+  "version": "1.0",
+  "generated_at": "2026-09-23T15:50:02.020Z",
+  "kits": [
+    {
+      "id": "case-01",
+      "status": "ok",
+      "kit": {
+        "source": {
+          "company": "https://vercel.com",
+          "company_url": "https://vercel.com",
+          "location": "Remote/Unspecified",
+          "jd_chars": 182,
+          "researched_at": "2026-09-23T15:50:10.990Z",
+          "pages_used": [
+            "https://vercel.com",
+            "https://vercel.com/careers",
+            "https://vercel.com/about",
+            "https://linkedin.com/company/vercel"
+          ]
+        },
+        "company_brief": {
+          "summary": "Vercel is a cloud platform that enables developers and AI agents to build, deploy, and scale web applications and services quickly. It offers serverless functions, global CDN delivery, sandboxed environments, durable orchestration, and an AI model gateway, allowing both human and agent workloads to run on infrastructure that learns and improves automatically.",
+          "what_they_do": [
+            "Deploy web applications and sites",
+            "Provide serverless functions",
+            "Deliver content globally via CDN",
+            "Offer sandboxed environments for secure execution",
+            "Enable durable orchestration for complex workflows",
+            "Supply an AI model gateway and agentic infrastructure",
+            "Support fluid compute for scalable workloads",
+            "Facilitate automated infrastructure improvement"
+          ],
+          "sources": [
+            "https://vercel.com",
+            "https://vercel.com/careers",
+            "https://vercel.com/about",
+            "https://linkedin.com/company/vercel"
+          ]
+        },
+        "role": {
+          "seniority": "Senior",
+          "responsibilities": [
+            "Develop and maintain high-performance web applications using Next.js",
+            "Implement UI components with Tailwind CSS",
+            "Build and optimize React Server Components",
+            "Collaborate with cross-functional teams to deliver features"
+          ],
+          "requirements": [
+            {
+              "requirement": "Next.js expertise",
+              "kind": "technical",
+              "priority": "must",
+              "id": "req_ed62c843",
+              "origin": "generated",
+              "is_edited": false,
+              "is_pinned": false
+            },
+            {
+              "requirement": "5+ years of frontend development experience",
+              "kind": "technical",
+              "priority": "must",
+              "id": "req_217ea7f5",
+              "origin": "generated",
+              "is_edited": false,
+              "is_pinned": false
+            },
+            {
+              "requirement": "Proficiency with Tailwind CSS",
+              "kind": "technical",
+              "priority": "must",
+              "id": "req_16aa52be",
+              "origin": "generated",
+              "is_edited": false,
+              "is_pinned": false
+            },
+            {
+              "requirement": "Experience with React Server Components",
+              "kind": "technical",
+              "priority": "must",
+              "id": "req_e9c525b7",
+              "origin": "generated",
+              "is_edited": false,
+              "is_pinned": false
+            },
+            {
+              "requirement": "Experience with WebGL",
+              "kind": "technical",
+              "priority": "nice",
+              "id": "req_63b6d7ad",
+              "origin": "generated",
+              "is_edited": false,
+              "is_pinned": false
+            }
+          ]
+        },
+        "questions": [
+          {
+            "requirement_ids": [
+              "req_ed62c843"
+            ],
+            "category": "technical",
+            "prompt": "Can you describe a complex Next.js application you've built, including how you handled routing, data fetching, and performance optimization?",
+            "answer_outline": "Mention pages, app router, getStaticProps, getServerSideProps, incremental static regeneration, image optimization, lazy loading, code splitting.",
+            "difficulty": 2,
+            "id": "q_0170af10",
+            "origin": "generated",
+            "is_edited": false,
+            "is_pinned": false
+          },
+          {
+            "requirement_ids": [
+              "req_217ea7f5"
+            ],
+            "category": "technical",
+            "prompt": "With over five years of frontend development, what are the key lessons you've learned about maintaining large codebases and ensuring code quality?",
+            "answer_outline": "Modular architecture, component libraries, type safety, testing, CI/CD, code reviews, documentation.",
+            "difficulty": 2,
+            "id": "q_3e324217",
+            "origin": "generated",
+            "is_edited": false,
+            "is_pinned": false
+          },
+          {
+            "requirement_ids": [
+              "req_16aa52be"
+            ],
+            "category": "technical",
+            "prompt": "How do you leverage Tailwind CSS to create responsive designs, and what strategies do you use to keep the CSS bundle size minimal?",
+            "answer_outline": "Utility-first, purge, dark mode, responsive variants, custom config, JIT mode, tree-shaking.",
+            "difficulty": 2,
+            "id": "q_6def4c94",
+            "origin": "generated",
+            "is_edited": false,
+            "is_pinned": false
+          },
+          {
+            "requirement_ids": [
+              "req_e9c525b7"
+            ],
+            "category": "technical",
+            "prompt": "Explain how you would implement a feature using React Server Components in a Next.js project, and what benefits they bring over traditional client components?",
+            "answer_outline": "Server components, data fetching, no client bundle, streaming, SSR, security, hydration.",
+            "difficulty": 2,
+            "id": "q_1ee708b8",
+            "origin": "generated",
+            "is_edited": false,
+            "is_pinned": false
+          },
+          {
+            "requirement_ids": [
+              "req_63b6d7ad"
+            ],
+            "category": "technical",
+            "prompt": "Describe a project where you integrated WebGL into a React application, and how you managed performance and resource cleanup?",
+            "answer_outline": "Use three.js, canvas, useEffect cleanup, requestAnimationFrame, memory leaks, performance profiling.",
+            "difficulty": 2,
+            "id": "q_f2e6adc9",
+            "origin": "generated",
+            "is_edited": false,
+            "is_pinned": false
+          },
+          {
+            "requirement_ids": [
+              "req_ed62c843",
+              "req_16aa52be",
+              "req_e9c525b7"
+            ],
+            "category": "technical",
+            "prompt": "How would you combine Next.js, Tailwind CSS, and React Server Components to build a high-performance, SEO-friendly dashboard, and what trade-offs would you consider?",
+            "answer_outline": "Next.js app router, server components for data, Tailwind for styling, static generation, incremental static regeneration, hydration, trade-offs: bundle size, complexity, client interactivity.",
+            "difficulty": 2,
+            "id": "q_08448b1b",
+            "origin": "generated",
+            "is_edited": false,
+            "is_pinned": false
+          }
+        ],
+        "flashcards": [
+          {
+            "front": "What framework is essential for this role?",
+            "back": "Next.js",
+            "requirement_ids": [
+              "req_ed62c843"
+            ],
+            "id": "f_11fb34a4",
+            "origin": "generated",
+            "is_edited": false,
+            "is_pinned": false
+          },
+          {
+            "front": "How many years of frontend development experience are required?",
+            "back": "5+ years",
+            "requirement_ids": [
+              "req_217ea7f5"
+            ],
+            "id": "f_394aa7f8",
+            "origin": "generated",
+            "is_edited": false,
+            "is_pinned": false
+          },
+          {
+            "front": "Which utility-first CSS framework must the candidate be proficient in?",
+            "back": "Tailwind CSS",
+            "requirement_ids": [
+              "req_16aa52be"
+            ],
+            "id": "f_64cfc4d3",
+            "origin": "generated",
+            "is_edited": false,
+            "is_pinned": false
+          },
+          {
+            "front": "Which advanced React feature should the candidate have experience with?",
+            "back": "React Server Components",
+            "requirement_ids": [
+              "req_e9c525b7"
+            ],
+            "id": "f_f3effe26",
+            "origin": "generated",
+            "is_edited": false,
+            "is_pinned": false
+          },
+          {
+            "front": "Which graphics API is a nice-to-have for this role?",
+            "back": "WebGL",
+            "requirement_ids": [
+              "req_63b6d7ad"
+            ],
+            "id": "f_5aff38c8",
+            "origin": "generated",
+            "is_edited": false,
+            "is_pinned": false
+          }
+        ],
+        "schedule": {
+          "days_available": 3,
+          "days": [
+            {
+              "day": 1,
+              "focus": "Technical Deep Dive",
+              "question_ids": [
+                "q_0170af10",
+                "q_3e324217"
+              ],
+              "minutes": 60
+            },
+            {
+              "day": 2,
+              "focus": "Technical Deep Dive",
+              "question_ids": [
+                "q_6def4c94",
+                "q_1ee708b8"
+              ],
+              "minutes": 60
+            },
+            {
+              "day": 3,
+              "focus": "Technical Deep Dive",
+              "question_ids": [
+                "q_08448b1b",
+                "q_f2e6adc9"
+              ],
+              "minutes": 60
+            }
+          ]
+        },
+        "coverage": {
+          "uncovered_requirement_ids": [],
+          "passes": 1
+        }
+      },
+      "error": null
+    }
+  ]
+}
