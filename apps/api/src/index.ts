@@ -27,6 +27,17 @@ app.use(express.json());
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/kits", kitRoutes);
 
+app.get("/", (req, res) => {
+  res.status(200).json({ 
+    status: "ok", 
+    message: "TraoPrep API is live and running!" 
+  });
+});
+
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "healthy", timestamp: new Date().toISOString() });
+});
+
 // Initialize Server
 const PORT = process.env.PORT || 3001;
 
