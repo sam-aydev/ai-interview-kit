@@ -73,8 +73,7 @@ export default function DashboardClient() {
         const data = await apiFetch("/kits?page=1&limit=9");
         setKits(data.kits);
         setHasMore(data.pagination.hasMore);
-        console.log(data.pagination);
-        console.log(data.kits);
+      
       } catch {
         setIsAuthenticated(false);
         router.push("/auth");
@@ -98,7 +97,7 @@ export default function DashboardClient() {
           setKits(data.kits);
         });
       } catch (err) {
-        console.error("Polling error", err);
+      
       }
     }, 4000);
 
@@ -171,7 +170,6 @@ export default function DashboardClient() {
           }
         } catch (jobErr: any) {
           if (jobErr.message?.includes("Unauthorized")) throw jobErr;
-          console.error(`Failed to start job for ${job.company_url}`, jobErr);
           const siteName = getSafeHostname(job.company_url);
           toast.error(
             `Skipped ${siteName}: ${jobErr.message || "Generation failed"}`,

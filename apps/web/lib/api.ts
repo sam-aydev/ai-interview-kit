@@ -1,7 +1,5 @@
 const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL ||
-  "http://localhost:3001/api/v1" ||
-  "https://ai-interview-kit-7rrg.onrender.com";
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
 
 function getCookie(name: string) {
   if (typeof document === "undefined") return null;

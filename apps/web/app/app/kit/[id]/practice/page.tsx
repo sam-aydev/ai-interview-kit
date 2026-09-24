@@ -35,7 +35,7 @@ export default function PracticeMode() {
         setDeck(sorted);
       })
       .catch((err) => {
-        console.error("Failed to load kit:", err);
+       
         router.push("/app");
       });
   }, [id, router]);
@@ -65,7 +65,7 @@ export default function PracticeMode() {
       });
       setKit(updatedKit);
     } catch (err) {
-      console.error("Failed to save progress", err);
+      
     }
     setSaving(false);
   };

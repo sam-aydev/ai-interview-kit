@@ -21,7 +21,6 @@ export async function generatePrepKit(
 ): Promise<Partial<KitDocument>> {
   const { jd, companyUrl, days, env = "production" } = options;
 
-  console.log(`[1/5] Extracting requirements from JD...`);
 
   // --- EXTRACT REQUIREMENTS ---
   const roleData = await generateJSON<{
@@ -68,7 +67,6 @@ export async function generatePrepKit(
     }),
   );
 
-  console.log(`[2/5] Crawling company site: ${companyUrl}`);
   // --- STEP 2: RESEARCH COMPANY ---
   const crawl = await crawlCompany(companyUrl, env);
 
@@ -102,11 +100,9 @@ export async function generatePrepKit(
         is_edited: false,
       };
     } catch (err) {
-      console.warn("Failed to parse company brief", err);
     }
   }
 
-  console.log(`[3/5] Generating Initial Questions...`);
   // GENERATE QUESTIONS
   const initialQuestionsPayload = await generateJSON<{
     questions: Omit<Question, "id" | "origin" | "is_edited" | "is_pinned">[];
@@ -139,15 +135,12 @@ export async function generatePrepKit(
     }),
   );
 
-  console.log(`[4/5] Checking Coverage & Second Pass...`);
   // THE SECOND PASS 
   let passes = 1;
   const uncoveredIds = getUncoveredRequirements(requirements, questions);
 
   if (uncoveredIds.length > 0) {
-    console.log(
-      `Found ${uncoveredIds.length} uncovered MUST-HAVE requirements. Running second pass...`,
-    );
+
     const gapRequirements = requirements.filter((r) =>
       uncoveredIds.includes(r.id),
     );
@@ -189,15 +182,11 @@ export async function generatePrepKit(
       questions = [...questions, ...gapQuestions];
       passes = 2;
     } catch (err) {
-      console.warn(
-        "Second pass question generation failed, proceeding with initial questions.",
-        err,
-      );
+ 
     }
   }
 
   //  FLASHCARDS & SCHEDULE 
-  console.log(`[5/5] Generating Flashcards & Finalizing Schedule...`);
   let flashcards: Flashcard[] = [];
   try {
     const flashcardsPayload = await generateJSON<{
@@ -219,7 +208,6 @@ export async function generatePrepKit(
       is_pinned: false,
     }));
   } catch (err) {
-    console.warn("Flashcard generation failed, returning empty array.", err);
   }
 
   // Use our Deterministic Engine for the schedule!

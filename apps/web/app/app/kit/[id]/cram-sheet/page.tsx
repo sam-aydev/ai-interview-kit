@@ -17,7 +17,7 @@ export default function CramSheet() {
     apiFetch(`/kits/${id}`)
       .then((data) => setKit(data))
       .catch((err) => {
-        console.error("Failed to load kit:", err);
+        
         router.push("/app");
       });
   }, [id, router]);

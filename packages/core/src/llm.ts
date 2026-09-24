@@ -53,9 +53,7 @@ export async function generateJSON<T>(
 
       // Exponential backoff: 2s, 4s, 8s
       const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1);
-      console.warn(
-        `[LLM] Attempt ${attempt} failed. Retrying in ${delay}ms... (${error.message})`,
-      );
+     
       await new Promise((res) => setTimeout(res, delay));
     }
   }

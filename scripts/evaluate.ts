@@ -20,21 +20,18 @@ async function run() {
   });
 
   if (typeof values.input !== "string" || typeof values.output !== "string") {
-    console.error("Usage: npm run evaluate -- --input <path> --output <path>");
     process.exit(1);
   }
 
   const inputPath = path.resolve(process.cwd(), values.input);
   const outputPath = path.resolve(process.cwd(), values.output);
 
-  console.log(`[Batch] Reading input from ${inputPath}`);
 
   let cases: BatchInputCase[];
   try {
     const rawData = await fs.readFile(inputPath, "utf-8");
     cases = JSON.parse(rawData);
   } catch (err: any) {
-    console.error(`[Batch] Failed to read or parse input file: ${err.message}`);
     process.exit(1);
   }
 
@@ -44,15 +41,11 @@ async function run() {
     kits: [],
   };
 
-  console.log(
-    `[Batch] Found ${cases.length} cases to process. Starting sequential run...`,
-  );
+ 
 
   // Process sequentially to protect free-tier TPM (Tokens Per Minute) rate limits
   for (const [index, testCase] of cases.entries()) {
-    console.log(
-      `\n--- Processing Case ${index + 1}/${cases.length}: [${testCase.id}] ---`,
-    );
+    
 
     const result = {
       id: testCase.id,
@@ -73,9 +66,7 @@ async function run() {
       
       result.kit = kit as any; 
       
-      console.log(`[Batch] Case [${testCase.id}] completed successfully.`);
     } catch (err: any) {
-      console.error(`[Batch] Case [${testCase.id}] FAILED: ${err.message}`);
       result.status = "failed";
       result.error = {
         code: "GENERATION_ERROR",
@@ -86,12 +77,9 @@ async function run() {
     output.kits.push(result);
   }
 
-  console.log(`\n[Batch] Run complete. Writing output to ${outputPath}`);
   await fs.writeFile(outputPath, JSON.stringify(output, null, 2), "utf-8");
-  console.log("[Batch] Done.");
 }
 
 run().catch((err) => {
-  console.error("[Batch] Fatal script error:", err);
   process.exit(1);
 });
