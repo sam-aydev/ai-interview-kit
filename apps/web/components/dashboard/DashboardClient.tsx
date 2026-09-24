@@ -70,9 +70,11 @@ export default function DashboardClient() {
       try {
         await apiFetch("/auth/verify");
         setIsAuthenticated(true);
-        const data = await apiFetch("/kits?page=1&limit=6");
+        const data = await apiFetch("/kits?page=1&limit=9");
         setKits(data.kits);
         setHasMore(data.pagination.hasMore);
+        console.log(data.pagination);
+        console.log(data.kits);
       } catch {
         setIsAuthenticated(false);
         router.push("/auth");
@@ -306,11 +308,11 @@ export default function DashboardClient() {
                           min="1"
                           max="60"
                           required
-                          value={singleData.days}
+                          value={singleData.days || ""}
                           onChange={(e) =>
                             setSingleData({
                               ...singleData,
-                              days: parseInt(e.target.value),
+                              days: parseInt(e.target.value) || 0,
                             })
                           }
                           className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-3.5 text-slate-900 focus:bg-white focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none text-sm font-medium transition-all"

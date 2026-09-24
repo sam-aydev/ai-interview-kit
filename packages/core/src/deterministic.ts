@@ -4,15 +4,12 @@ import type {
   ScheduleDay,
 } from "../../shared/src/types.ts";
 
-/**
- * Checks which MUST-HAVE requirements are not covered by any generated questions.
- * This triggers the "Second Pass" generation loop if the array returned is not empty.
- */
+
 export function getUncoveredRequirements(
   requirements: Requirement[],
   questions: Question[],
 ): string[] {
-  // 1. Gather all requirement IDs that have at least one question
+  // Gather all requirement IDs that have at least one question
   const coveredIds = new Set<string>();
   for (const q of questions) {
     for (const reqId of q.requirement_ids) {
@@ -20,28 +17,22 @@ export function getUncoveredRequirements(
     }
   }
 
-  // 2. Filter for 'must' requirements that are missing from the covered set
+  
   return requirements
     .filter((req) => req.priority === "must" && !coveredIds.has(req.id))
     .map((req) => req.id);
 }
 
-/**
- * Distributes questions across the available days.
- * Rules met:
- * - Harder/priority material earlier.
- * - Integer minutes.
- * - Exact number of days returned.
- */
+
 export function allocateSchedule(
   questions: Question[],
   requirements: Requirement[],
   daysAvailable: number,
 ): ScheduleDay[] {
-  // 1. Map requirement priorities for quick lookup
+  // Map requirement priorities for quick lookup
   const reqPriorityMap = new Map(requirements.map((r) => [r.id, r.priority]));
 
-  // 2. Calculate time and score each question
+  // Calculate time and score each question
   // We assign 15 minutes per difficulty point (diff 1 = 15m, diff 2 = 30m, diff 3 = 45m)
   const scoredQuestions = questions.map((q) => {
     const coversMustHave = q.requirement_ids.some(
@@ -54,14 +45,14 @@ export function allocateSchedule(
     };
   });
 
-  // 3. Sort: Must-haves first, then highest difficulty first
+  // Sort: Must-haves first, then highest difficulty first
   scoredQuestions.sort((a, b) => {
     if (a.coversMustHave && !b.coversMustHave) return -1;
     if (!a.coversMustHave && b.coversMustHave) return 1;
     return b.difficulty - a.difficulty;
   });
 
-  // 4. Initialize empty days
+  // Initialize empty days
   const schedule: ScheduleDay[] = Array.from(
     { length: daysAvailable },
     (_, i) => ({
@@ -72,7 +63,7 @@ export function allocateSchedule(
     }),
   );
 
-  // 5. Fill days sequentially until they hit the daily target time
+  // Fill days sequentially until they hit the daily target time
   const totalMinutes = scoredQuestions.reduce(
     (acc, q) => acc + q.estimatedMinutes,
     0,
@@ -96,7 +87,7 @@ export function allocateSchedule(
     }
   }
 
-  // 6. Generate a readable "focus" for each day based on its dominant category
+  // Generate a readable "focus" for each day based on its dominant category
   const focusLabels: Record<string, string> = {
     technical: "Technical Deep Dive",
     behavioural: "Behavioural & Experience",

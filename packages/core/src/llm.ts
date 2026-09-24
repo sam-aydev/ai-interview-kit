@@ -1,16 +1,11 @@
-// packages/core/src/llm.ts
-
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 2000;
 
-/**
- * Generic LLM caller with Exponential Backoff for rate limits (429).
- * Enforces JSON output.
- */
+
 export async function generateJSON<T>(
   systemPrompt: string,
   userPrompt: string,
-  model = process.env.LLM_MODEL || "openai/gpt-oss-20b", // Defaulting to a free Groq model as an example
+  model = process.env.LLM_MODEL || "openai/gpt-oss-20b", 
 ): Promise<T> {
   const apiKey = process.env.LLM_API_KEY;
   const baseURL =
@@ -34,7 +29,7 @@ export async function generateJSON<T>(
             { role: "user", content: userPrompt },
           ],
           response_format: { type: "json_object" },
-          temperature: 0.2, // Low temperature for deterministic JSON structure
+          temperature: 0.2, 
         }),
       });
 

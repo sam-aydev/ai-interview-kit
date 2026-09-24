@@ -1,4 +1,4 @@
-// --- APPENDIX A: KIT STRUCTURE ---
+// APPENDIX A: KIT STRUCTURE
 
 export type RequirementKind = "technical" | "behavioural" | "domain";
 export type PriorityLevel = "must" | "nice";
@@ -8,7 +8,7 @@ export type QuestionCategory =
   | "system-design"
   | "company-fit";
 
-// Add this base interface at the top
+
 export interface StateMetadata {
   origin: "generated" | "user_added";
   is_edited: boolean;
@@ -36,7 +36,7 @@ export interface Flashcard extends StateMetadata {
   front: string;
   back: string;
   requirement_ids: string[];
-  confidence?: number; // Added for Practice Mode
+  confidence?: number; 
 }
 
 
@@ -80,7 +80,7 @@ export interface KitDocument {
   };
 }
 
-// --- APPENDIX B: BATCH IO ---
+// APPENDIX B: BATCH IO
 
 export interface BatchInputCase {
   id: string;

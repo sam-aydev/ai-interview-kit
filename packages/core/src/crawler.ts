@@ -7,7 +7,7 @@ export interface CrawlResult {
   errors: string[];
 }
 
-// 1. Security Layer (SSRF Protection)
+// Security Layer (SSRF Protection)
 async function isSafeUrl(
   targetUrl: string,
   env: "production" | "batch",
@@ -32,7 +32,7 @@ async function isSafeUrl(
   }
 }
 
-// 2. Network Layer
+// Network Layer
 async function fetchSafe(
   url: string,
   env: "production" | "batch",
@@ -71,14 +71,14 @@ async function fetchSafe(
   }
 }
 
-// 3. Text Extraction
+// Text Extraction
 function extractCleanText(html: string): string {
   const $ = cheerio.load(html);
   $("script, style, nav, footer, header, aside, svg, img, form").remove();
   return $("body").text().replace(/\s+/g, " ").trim();
 }
 
-// 4. Heuristic Link Scoring
+// Heuristic Link Scoring
 function getTopCandidateLinks(html: string, baseUrl: string): string[] {
   const $ = cheerio.load(html);
   const candidates = new Map<string, { url: string; score: number }>();
@@ -120,7 +120,7 @@ function getTopCandidateLinks(html: string, baseUrl: string): string[] {
         }
       }
     } catch {
-      /* ignore malformed urls */
+      
     }
   });
 
@@ -130,7 +130,7 @@ function getTopCandidateLinks(html: string, baseUrl: string): string[] {
     .map((c) => c.url);
 }
 
-// 5. PUBLIC DISCUSSION SEARCH
+// PUBLIC DISCUSSION SEARCH
 async function searchPublicDiscussion(
   companyName: string,
   env: "production" | "batch",
@@ -179,11 +179,11 @@ export async function crawlCompany(
     companyName =
       parsedUrl.hostname.replace("www.", "").split(".")[0] || "the company";
   } catch (e) {
-    /* ignore */
+    
   }
 
   try {
-    // 1. Fetch Homepage
+    // Fetch Homepage
     const homeHtml = await fetchSafe(baseUrl, env);
     if (!homeHtml) throw new Error("Empty response from homepage");
 
@@ -191,7 +191,7 @@ export async function crawlCompany(
     result.scraped_text +=
       `\n--- SOURCE: ${baseUrl} ---\n` + extractCleanText(homeHtml);
 
-    // 2. Discover & Fetch Links
+    // Discover & Fetch Links
     const candidateLinks = getTopCandidateLinks(homeHtml, baseUrl);
     for (const link of candidateLinks) {
       if (result.pages_used.includes(link)) continue;
@@ -207,7 +207,7 @@ export async function crawlCompany(
       }
     }
 
-    // 3. Search Public Discussion
+    // Search Public Discussion
     const discussions = await searchPublicDiscussion(companyName, env);
     result.scraped_text += `\n--- PUBLIC DISCUSSION (${companyName}) ---\n${discussions}`;
   } catch (err: any) {

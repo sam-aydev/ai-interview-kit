@@ -14,6 +14,9 @@ import type {
   Requirement,
 } from "../../../../packages/shared/src/types.js";
 
+// 1. Initialize a global promise chain to act as an in-memory queue
+let generationQueue = Promise.resolve();
+
 export const startGeneration = async (req: AuthRequest, res: Response) => {
   const userId = req.user?.id;
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
@@ -25,24 +28,39 @@ export const startGeneration = async (req: AuthRequest, res: Response) => {
   }
 
   try {
+    // Create the DB record
     const newKit = await KitModel.create({
       user_id: userId,
       status: "generating",
       source: { company_url, jd_chars: jd.length },
     });
 
+    // Instantly respond to the frontend so it can render the "Generating" cards
     res.status(202).json({ id: newKit._id, status: "generating" });
 
-    generatePrepKit({ jd, companyUrl: company_url, days })
-      .then(async (generatedData) => {
-        await KitModel.findByIdAndUpdate(newKit._id, {
-          ...generatedData,
-          status: "ready",
-        });
+    // 2. Attach the generation task to the queue instead of running it immediately
+    generationQueue = generationQueue
+      .then(async () => {
+        try {
+          const generatedData = await generatePrepKit({
+            jd,
+            companyUrl: company_url,
+            days,
+          });
+          await KitModel.findByIdAndUpdate(newKit._id, {
+            ...generatedData,
+            status: "ready",
+          });
+        } catch (error: unknown) {
+          console.error(`[API] Kit ${newKit._id} generation failed:`, error);
+          await KitModel.findByIdAndUpdate(newKit._id, { status: "failed" });
+        }
       })
-      .catch(async (error: unknown) => {
-        console.error(`[API] Kit ${newKit._id} generation failed:`, error);
-        await KitModel.findByIdAndUpdate(newKit._id, { status: "failed" });
+      .catch(() => {
+        // Safe-catch to ensure one catastrophic failure doesn't break the entire queue chain
+        console.error(
+          `[API] Queue recovered from catastrophic failure on Kit ${newKit._id}`,
+        );
       });
   } catch (error: unknown) {
     res.status(500).json({ error: "Failed to initialize generation" });

@@ -8,7 +8,6 @@ import type {
   BatchOutputResult,
 } from "../packages/shared/src/types.ts";
 
-// Minimal polyfill for dotenv so the script runs cleanly
 import "dotenv/config";
 
 async function run() {
@@ -55,15 +54,15 @@ async function run() {
       `\n--- Processing Case ${index + 1}/${cases.length}: [${testCase.id}] ---`,
     );
 
-    const result: BatchOutputResult = {
+    const result = {
       id: testCase.id,
       status: "ok",
       kit: null,
       error: null,
-    };
+    } as unknown as BatchOutputResult;
 
     try {
-      // We pass env: 'batch' to allow local mock servers during grading
+      // I pass env: 'batch' to allow local mock servers during grading
       const kit = await generatePrepKit({
         jd: testCase.jd,
         companyUrl: testCase.company_url,
@@ -71,7 +70,9 @@ async function run() {
         env: "batch",
       });
 
-      result.kit = kit;
+      
+      result.kit = kit as any; 
+      
       console.log(`[Batch] Case [${testCase.id}] completed successfully.`);
     } catch (err: any) {
       console.error(`[Batch] Case [${testCase.id}] FAILED: ${err.message}`);
